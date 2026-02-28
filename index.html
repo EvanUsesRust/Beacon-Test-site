@@ -585,60 +585,95 @@ async function requestData() {
 
 async function readAllData() {
   try {
-    log('Reading latest data…');
+    log('Reading stats…');
+    const statsBytes = await readOffsetChar(CHAR_STATS_UUID);
+    if (statsBytes) {
+      try {
+        const stats = JSON.parse(new TextDecoder().decode(statsBytes));
+        displayStats(stats);
+        log('Stats received', 'ok');
+      } catch(e) { log('Stats parse error: ' + e.message, 'err'); }
+    }
 
-    // Stats
-    const statsChar = await service.getCharacteristic(CHAR_STATS_UUID);
-    const statsVal  = await statsChar.readValue();
-    const statsJson = new TextDecoder().decode(statsVal);
-    const stats     = JSON.parse(statsJson);
-    displayStats(stats);
-    log('Stats received', 'ok');
+    log('Reading photo (may take a moment over BLE)…');
+    const photoBytes = await readOffsetChar(CHAR_PHOTO_UUID);
+    if (photoBytes) {
+      const view     = new DataView(photoBytes.buffer);
+      const totalLen = view.getUint32(0, true);
+      if (totalLen > 0) {
+        const b64 = new TextDecoder().decode(photoBytes.slice(4, 4 + totalLen));
+        displayImage('origImg', 'origWrap', b64);
+        log('Photo received (' + Math.round(photoBytes.length / 1024) + ' KB)', 'ok');
+      } else {
+        log('No photo on Pi yet — take a capture first', '');
+      }
+    }
 
-    // Photo (chunked base64)
-    log('Reading photo…');
-    const photoData = await readChunked(CHAR_PHOTO_UUID);
-    if (photoData) displayImage('origImg', 'origWrap', photoData);
-
-    // Heatmap (chunked base64)
     log('Reading heatmap…');
-    const heatData = await readChunked(CHAR_HEATMAP_UUID);
-    if (heatData) displayImage('heatImg', 'heatWrap', heatData);
+    const heatBytes = await readOffsetChar(CHAR_HEATMAP_UUID);
+    if (heatBytes) {
+      const view     = new DataView(heatBytes.buffer);
+      const totalLen = view.getUint32(0, true);
+      if (totalLen > 0) {
+        const b64 = new TextDecoder().decode(heatBytes.slice(4, 4 + totalLen));
+        displayImage('heatImg', 'heatWrap', b64);
+        log('Heatmap received', 'ok');
+      }
+    }
 
     document.getElementById('captureTs').textContent = new Date().toLocaleTimeString();
     log('All data loaded', 'ok');
 
   } catch(e) {
     log('Read error: ' + e.message, 'err');
+    console.error(e);
   }
 }
 
-// Bluetooth MTU is ~512 bytes so large images are sent in chunks.
-// The Pi server prepends a 4-byte little-endian total-length header,
-// then sends the base64 string in sequential characteristic writes.
-// We read the characteristic repeatedly until we have all bytes.
-async function readChunked(charUuid) {
+/**
+ * Read a GATT characteristic of ANY size using offset-based reads.
+ * Each call to readValue() with an increasing offset fetches the next
+ * 512-byte window. A response shorter than 512 bytes signals end-of-data.
+ *
+ * This is the ONLY correct way — calling readValue() without an offset
+ * always returns the same first 512 bytes no matter how many times you call it.
+ */
+async function readOffsetChar(charUuid) {
+  const CHUNK = 512;
   try {
-    const char = await service.getCharacteristic(charUuid);
-    // First read: header (4 bytes length) + first chunk
-    let val = await char.readValue();
-    const totalLen = val.getUint32(0, true);
-    if (totalLen === 0) return null;
+    const char   = await service.getCharacteristic(charUuid);
+    const chunks = [];
+    let offset   = 0;
 
-    let accumulated = '';
-    let chunk = new TextDecoder().decode(new Uint8Array(val.buffer, 4));
-    accumulated += chunk;
+    while (true) {
+      let val;
+      try {
+        val = await char.readValue({ offset });
+      } catch(e) {
+        // Browser doesn't support offset option — only works for small data
+        if (offset === 0) val = await char.readValue();
+        else break;
+      }
 
-    // Keep reading until we have the full base64 string
-    while (accumulated.length < totalLen) {
-      val  = await char.readValue();
-      chunk = new TextDecoder().decode(val);
-      accumulated += chunk;
+      const slice = new Uint8Array(val.buffer);
+      if (slice.length === 0) break;
+      chunks.push(slice);
+      offset += slice.length;
+
+      if (slice.length < CHUNK) break;  // last chunk — we're done
     }
 
-    return accumulated.substring(0, totalLen);
+    if (chunks.length === 0) return null;
+
+    const total  = chunks.reduce((s, c) => s + c.length, 0);
+    const result = new Uint8Array(total);
+    let pos = 0;
+    for (const c of chunks) { result.set(c, pos); pos += c.length; }
+    log('  → ' + charUuid.slice(-4) + ': read ' + total + ' bytes in ' + chunks.length + ' chunks');
+    return result;
+
   } catch(e) {
-    log('Chunk read error (' + charUuid.slice(-4) + '): ' + e.message, 'err');
+    log('Read error (' + charUuid.slice(-4) + '): ' + e.message, 'err');
     return null;
   }
 }
