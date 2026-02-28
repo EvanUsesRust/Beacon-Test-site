@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IR Spectrometer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,400;1,9..144,200&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:     #1a1a18;
+      --paper:   #f5f2ec;
+      --warm:    #e8e2d6;
+      --accent:  #c4501a;
+      --mid:     #7a7468;
+      --green:   #3a7a3a;
+      --border:  #c8c2b8;
+      --radius:  2px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---- layout ---- */
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ---- header ---- */
+    header {
+      padding: 36px 0 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .wordmark {
+      font-family: 'Fraunces', serif;
+      font-size: 22px;
+      font-weight: 200;
+      font-style: italic;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      line-height: 1.1;
+    }
+    .wordmark span {
+      display: block;
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      font-style: normal;
+      font-weight: 400;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--mid);
+      margin-bottom: 4px;
+    }
+
+    /* ---- status pill ---- */
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--mid);
+      background: var(--warm);
+      transition: all 0.4s ease;
+      white-space: nowrap;
+      cursor: default;
+    }
+    .status-pill.connected {
+      border-color: var(--green);
+      color: var(--green);
+      background: #f0f7f0;
+    }
+    .status-pill.connecting {
+      border-color: #b08020;
+      color: #b08020;
+      background: #fdf8f0;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.4s ease;
+      flex-shrink: 0;
+    }
+    .status-pill.connected .dot  { background: var(--green); animation: pulse 2s infinite; }
+    .status-pill.connecting .dot { background: #b08020; animation: blink 0.8s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.85); }
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+
+    /* ---- main ---- */
+    main { padding: 32px 0; display: flex; flex-direction: column; gap: 28px; }
+
+    /* ---- connect block ---- */
+    .connect-block {
+      background: var(--warm);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .connect-block h2 {
+      font-family: 'Fraunces', serif;
+      font-size: 18px;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--ink);
+    }
+    .connect-block p {
+      color: var(--mid);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 11px 22px;
+      border: 1.5px solid var(--ink);
+      border-radius: var(--radius);
+      background: var(--ink);
+      color: var(--paper);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      width: fit-content;
+    }
+    .btn:hover  { background: var(--accent); border-color: var(--accent); }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+    .btn.outline {
+      background: transparent;
+      color: var(--ink);
+    }
+    .btn.outline:hover { background: var(--ink); color: var(--paper); }
+
+    .btn svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
+
+    /* ---- data panels ---- */
+    .panels { display: none; flex-direction: column; gap: 20px; }
+    .panels.visible { display: flex; }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #fff;
+    }
+    .panel-head {
+      padding: 12px 18px;
+      background: var(--warm);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .panel-head h3 {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--mid);
+    }
+    .panel-head .ts {
+      font-size: 10px;
+      color: var(--border);
+      font-style: italic;
+    }
+    .panel-body { padding: 20px 18px; }
+
+    /* image pair */
+    .img-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .img-slot {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .img-slot label {
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--mid);
+    }
+    .img-slot .img-wrap {
+      aspect-ratio: 4/3;
+      background: var(--warm);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .img-slot .img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+    .img-slot .img-wrap img.loaded { display: block; }
+    .img-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: var(--border);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .img-placeholder svg { width: 24px; height: 24px; fill: var(--border); }
+
+    /* stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .stat-cell {
+      background: #fff;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-cell .stat-label {
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--mid);
+    }
+    .stat-cell .stat-val {
+      font-size: 24px;
+      font-family: 'Fraunces', serif;
+      font-weight: 200;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .stat-cell .stat-bar {
+      height: 2px;
+      background: var(--warm);
+      border-radius: 1px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .stat-cell .stat-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 1px;
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    /* refresh row */
+    .refresh-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 4px;
+    }
+    .refresh-row .hint { font-size: 11px; color: var(--mid); font-style: italic; }
+
+    /* log */
+    .log {
+      font-size: 11px;
+      color: var(--mid);
+      line-height: 1.9;
+      max-height: 90px;
+      overflow-y: auto;
+      border-top: 1px solid var(--border);
+      padding: 12px 18px 10px;
+      background: var(--warm);
+    }
+    .log-line { display: flex; gap: 10px; }
+    .log-line .lt { color: var(--border); flex-shrink: 0; }
+    .log-line .lm.ok  { color: var(--green); }
+    .log-line .lm.err { color: var(--accent); }
+
+    /* ---- footer ---- */
+    footer {
+      padding: 20px 0 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    footer p { font-size: 10px; color: var(--border); letter-spacing: 0.06em; }
+    .bt-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--mid);
+      letter-spacing: 0.06em;
+    }
+    .bt-badge svg { width: 11px; height: 11px; fill: #4285f4; }
+
+    /* ---- loading overlay on images ---- */
+    .img-wrap.loading::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
+    }
+
+    /* mobile */
+    @media (max-width: 480px) {
+      .shell { padding: 0 14px; }
+      .img-pair { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="wordmark">
+      <span>Arducam IMX708</span>
+      IR Spectrometer
+    </div>
+    <div class="status-pill" id="statusPill">
+      <div class="dot"></div>
+      <span id="statusText">Disconnected</span>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- Connect block -->
+    <div class="connect-block" id="connectBlock">
+      <h2>Connect to your Pi</h2>
+      <p>
+        Make sure your Raspberry Pi is powered on and the Bluetooth GATT server is running.<br>
+        Tap connect to pair via Web Bluetooth.
+      </p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn" id="connectBtn" onclick="connectBluetooth()">
+          <svg viewBox="0 0 24 24"><path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/></svg>
+          Connect via Bluetooth
+        </button>
+        <button class="btn outline" onclick="loadDemo()" title="Preview with sample data">
+          Demo mode
+        </button>
+      </div>
+    </div>
+
+    <!-- Live data panels (hidden until connected) -->
+    <div class="panels" id="panels">
+
+      <!-- Image panel -->
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Latest Capture</h3>
+          <span class="ts" id="captureTs">—</span>
+        </div>
+        <div class="panel-body">
+          <div class="img-pair">
+            <div class="img-slot">
+              <label>Original</label>
+              <div class="img-wrap" id="origWrap">
+                <div class="img-placeholder">
+                  <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                  <span>Awaiting</span>
+                </div>
+                <img id="origImg" alt="Original capture" />
+              </div>
+            </div>
+            <div class="img-slot">
+              <label>IR Heatmap</label>
+              <div class="img-wrap" id="heatWrap">
+                <div class="img-placeholder">
+                  <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+                  <span>Awaiting</span>
+                </div>
+                <img id="heatImg" alt="IR heatmap" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats panel -->
+      <div class="panel" id="statsPanel" style="display:none">
+        <div class="panel-head">
+          <h3>IR Brightness Stats</h3>
+        </div>
+        <div class="panel-body">
+          <div class="stats-grid">
+            <div class="stat-cell">
+              <div class="stat-label">Minimum</div>
+              <div class="stat-val" id="statMin">—</div>
+              <div class="stat-bar"><div class="stat-bar-fill" id="barMin"></div></div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-label">Maximum</div>
+              <div class="stat-val" id="statMax">—</div>
+              <div class="stat-bar"><div class="stat-bar-fill" id="barMax"></div></div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-label">Average</div>
+              <div class="stat-val" id="statAvg">—</div>
+              <div class="stat-bar"><div class="stat-bar-fill" id="barAvg"></div></div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-label">Median</div>
+              <div class="stat-val" id="statMed">—</div>
+              <div class="stat-bar"><div class="stat-bar-fill" id="barMed"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Refresh row -->
+      <div class="refresh-row">
+        <p class="hint">Updates automatically when Pi sends new data.</p>
+        <button class="btn outline" onclick="requestData()">
+          <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          Refresh
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Log -->
+    <div class="log" id="logEl"></div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>IR Spectrometer · Raspberry Pi · IMX708</p>
+    <div class="bt-badge">
+      <svg viewBox="0 0 24 24"><path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/></svg>
+      Web Bluetooth
+    </div>
+  </footer>
+</div>
+
+<script>
+// ─── Bluetooth UUIDs (must match Pi server) ───────────────────────────────
+const SERVICE_UUID         = '12345678-1234-1234-1234-123456789abc';
+const CHAR_STATUS_UUID     = '12345678-1234-1234-1234-123456789ab1';
+const CHAR_PHOTO_UUID      = '12345678-1234-1234-1234-123456789ab2';
+const CHAR_HEATMAP_UUID    = '12345678-1234-1234-1234-123456789ab3';
+const CHAR_STATS_UUID      = '12345678-1234-1234-1234-123456789ab4';
+
+// ─── State ────────────────────────────────────────────────────────────────
+let btDevice = null, btServer = null, service = null;
+
+// ─── Log helper ───────────────────────────────────────────────────────────
+function log(msg, type = '') {
+  const el = document.getElementById('logEl');
+  const now = new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="lt">${now}</span><span class="lm ${type}">${msg}</span>`;
+  el.prepend(line);
+  while (el.children.length > 30) el.removeChild(el.lastChild);
+}
+
+// ─── Status pill ──────────────────────────────────────────────────────────
+function setStatus(state, text) {
+  const pill = document.getElementById('statusPill');
+  const span = document.getElementById('statusText');
+  pill.className = 'status-pill ' + state;
+  span.textContent = text;
+}
+
+// ─── Connect ──────────────────────────────────────────────────────────────
+async function connectBluetooth() {
+  if (!navigator.bluetooth) {
+    log('Web Bluetooth not supported on this browser/device.', 'err');
+    alert('Web Bluetooth is not supported.\nUse Chrome or Edge on Android, or a compatible browser.');
+    return;
+  }
+
+  const btn = document.getElementById('connectBtn');
+  btn.disabled = true;
+  setStatus('connecting', 'Connecting…');
+  log('Scanning for IR Spectrometer…');
+
+  try {
+    btDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'IRSpectrometer' }],
+      optionalServices: [SERVICE_UUID]
+    });
+
+    btDevice.addEventListener('gattserverdisconnected', onDisconnected);
+    log('Device found: ' + btDevice.name);
+
+    btServer = await btDevice.gatt.connect();
+    service  = await btServer.getPrimaryService(SERVICE_UUID);
+
+    setStatus('connected', 'Connected');
+    log('Connected to GATT server', 'ok');
+    document.getElementById('panels').classList.add('visible');
+    btn.textContent = 'Reconnect';
+    btn.disabled = false;
+
+    // Subscribe to status notifications
+    const statusChar = await service.getCharacteristic(CHAR_STATUS_UUID);
+    await statusChar.startNotifications();
+    statusChar.addEventListener('characteristicvaluechanged', onStatusChanged);
+
+    await readAllData();
+  } catch(e) {
+    log('Connection failed: ' + e.message, 'err');
+    setStatus('', 'Disconnected');
+    btn.disabled = false;
+  }
+}
+
+function onDisconnected() {
+  setStatus('', 'Disconnected');
+  log('Device disconnected', 'err');
+  document.getElementById('connectBtn').disabled = false;
+}
+
+function onStatusChanged(event) {
+  const val = new TextDecoder().decode(event.target.value);
+  log('Pi status: ' + val);
+}
+
+// ─── Read data ────────────────────────────────────────────────────────────
+async function requestData() {
+  if (!service) { log('Not connected', 'err'); return; }
+  await readAllData();
+}
+
+async function readAllData() {
+  try {
+    log('Reading latest data…');
+
+    // Stats
+    const statsChar = await service.getCharacteristic(CHAR_STATS_UUID);
+    const statsVal  = await statsChar.readValue();
+    const statsJson = new TextDecoder().decode(statsVal);
+    const stats     = JSON.parse(statsJson);
+    displayStats(stats);
+    log('Stats received', 'ok');
+
+    // Photo (chunked base64)
+    log('Reading photo…');
+    const photoData = await readChunked(CHAR_PHOTO_UUID);
+    if (photoData) displayImage('origImg', 'origWrap', photoData);
+
+    // Heatmap (chunked base64)
+    log('Reading heatmap…');
+    const heatData = await readChunked(CHAR_HEATMAP_UUID);
+    if (heatData) displayImage('heatImg', 'heatWrap', heatData);
+
+    document.getElementById('captureTs').textContent = new Date().toLocaleTimeString();
+    log('All data loaded', 'ok');
+
+  } catch(e) {
+    log('Read error: ' + e.message, 'err');
+  }
+}
+
+// Bluetooth MTU is ~512 bytes so large images are sent in chunks.
+// The Pi server prepends a 4-byte little-endian total-length header,
+// then sends the base64 string in sequential characteristic writes.
+// We read the characteristic repeatedly until we have all bytes.
+async function readChunked(charUuid) {
+  try {
+    const char = await service.getCharacteristic(charUuid);
+    // First read: header (4 bytes length) + first chunk
+    let val = await char.readValue();
+    const totalLen = val.getUint32(0, true);
+    if (totalLen === 0) return null;
+
+    let accumulated = '';
+    let chunk = new TextDecoder().decode(new Uint8Array(val.buffer, 4));
+    accumulated += chunk;
+
+    // Keep reading until we have the full base64 string
+    while (accumulated.length < totalLen) {
+      val  = await char.readValue();
+      chunk = new TextDecoder().decode(val);
+      accumulated += chunk;
+    }
+
+    return accumulated.substring(0, totalLen);
+  } catch(e) {
+    log('Chunk read error (' + charUuid.slice(-4) + '): ' + e.message, 'err');
+    return null;
+  }
+}
+
+// ─── Display helpers ──────────────────────────────────────────────────────
+function displayImage(imgId, wrapId, b64) {
+  const img  = document.getElementById(imgId);
+  const wrap = document.getElementById(wrapId);
+  wrap.classList.add('loading');
+  img.onload = () => {
+    img.classList.add('loaded');
+    wrap.classList.remove('loading');
+    const placeholder = wrap.querySelector('.img-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+  };
+  img.src = 'data:image/jpeg;base64,' + b64;
+}
+
+function displayStats(stats) {
+  const { min_brightness, max_brightness, avg_brightness, median_brightness } = stats;
+  document.getElementById('statMin').textContent = min_brightness;
+  document.getElementById('statMax').textContent = max_brightness;
+  document.getElementById('statAvg').textContent = avg_brightness;
+  document.getElementById('statMed').textContent = median_brightness;
+  document.getElementById('barMin').style.width = (min_brightness / 255 * 100) + '%';
+  document.getElementById('barMax').style.width = (max_brightness / 255 * 100) + '%';
+  document.getElementById('barAvg').style.width = (avg_brightness / 255 * 100) + '%';
+  document.getElementById('barMed').style.width = (median_brightness / 255 * 100) + '%';
+  document.getElementById('statsPanel').style.display = 'block';
+}
+
+// ─── Demo mode ────────────────────────────────────────────────────────────
+function loadDemo() {
+  setStatus('connected', 'Demo mode');
+  document.getElementById('panels').classList.add('visible');
+  log('Demo mode active — showing sample data', 'ok');
+  displayStats({ min_brightness: 12, max_brightness: 241, avg_brightness: 138, median_brightness: 142 });
+  document.getElementById('captureTs').textContent = new Date().toLocaleTimeString();
+
+  // Generate a tiny placeholder gradient image as base64
+  const canvas = document.createElement('canvas');
+  canvas.width = 80; canvas.height = 60;
+  const ctx = canvas.getContext('2d');
+
+  // Original - warm grey
+  const g1 = ctx.createLinearGradient(0,0,80,60);
+  g1.addColorStop(0, '#c8bfb0'); g1.addColorStop(1, '#7a7060');
+  ctx.fillStyle = g1; ctx.fillRect(0,0,80,60);
+  displayImage('origImg', 'origWrap', canvas.toDataURL('image/jpeg').split(',')[1]);
+
+  // Heatmap - thermal colours
+  const g2 = ctx.createLinearGradient(0,0,80,60);
+  g2.addColorStop(0, '#0033ff'); g2.addColorStop(0.4, '#00ff88');
+  g2.addColorStop(0.7, '#ffcc00'); g2.addColorStop(1, '#ff2200');
+  ctx.fillStyle = g2; ctx.fillRect(0,0,80,60);
+  displayImage('heatImg', 'heatWrap', canvas.toDataURL('image/jpeg').split(',')[1]);
+}
+
+log('Ready. Connect your Raspberry Pi.');
+</script>
+</body>
+</html>
