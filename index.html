@@ -259,7 +259,7 @@ async function connectBluetooth(){
 
   try{
     const device=await navigator.bluetooth.requestDevice({
-      filters:[{name:'RPI-IP'}],
+      filters:[{name:'BEACON'}],
       optionalServices:[SERVICE_UUID]
     });
 
