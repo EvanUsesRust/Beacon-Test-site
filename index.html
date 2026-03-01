@@ -1,34 +1,291 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Raspberry Pi · Bluetooth IP</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,400;1,9..144,200&display=swap" rel="stylesheet" />
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:#1a1a18;
+  --paper:#f5f2ec;
+  --warm:#e8e2d6;
+  --accent:#c4501a;
+  --mid:#7a7468;
+  --green:#3a7a3a;
+  --border:#c8c2b8;
+  --radius:2px;
+}
+
+html,body{
+  height:100%;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'DM Mono',monospace;
+  font-size:13px;
+  line-height:1.6;
+}
+
+.shell{
+  min-height:100vh;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  max-width:640px;
+  margin:0 auto;
+  padding:0 20px;
+}
+
+/* Header */
+header{
+  padding:36px 0 28px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+}
+
+.wordmark{
+  font-family:'Fraunces',serif;
+  font-size:22px;
+  font-weight:200;
+  font-style:italic;
+}
+.wordmark span{
+  display:block;
+  font-family:'DM Mono',monospace;
+  font-size:9px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--mid);
+  margin-bottom:4px;
+}
+
+/* Status pill */
+.status-pill{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:6px 14px;
+  border:1px solid var(--border);
+  border-radius:100px;
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  background:var(--warm);
+  color:var(--mid);
+  transition:.4s ease;
+}
+.status-pill.connected{
+  border-color:var(--green);
+  color:var(--green);
+  background:#f0f7f0;
+}
+.status-pill.connecting{
+  border-color:#b08020;
+  color:#b08020;
+  background:#fdf8f0;
+}
+.dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--border);
+}
+.status-pill.connected .dot{background:var(--green);}
+.status-pill.connecting .dot{background:#b08020;animation:blink .8s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+/* Main */
+main{padding:32px 0;display:flex;flex-direction:column;gap:28px;}
+
+.connect-block{
+  background:var(--warm);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:28px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.connect-block h2{
+  font-family:'Fraunces',serif;
+  font-size:18px;
+  font-style:italic;
+}
+
+.connect-block p{
+  color:var(--mid);
+  font-size:12px;
+}
+
+/* Button */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:11px 22px;
+  border:1.5px solid var(--ink);
+  border-radius:var(--radius);
+  background:var(--ink);
+  color:var(--paper);
+  font-size:11px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:.18s ease;
+  width:fit-content;
+}
+.btn:hover{background:var(--accent);border-color:var(--accent);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* Panel */
+.panel{
+  display:none;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  background:#fff;
+}
+.panel.visible{display:block;}
+
+.panel-head{
+  padding:12px 18px;
+  background:var(--warm);
+  border-bottom:1px solid var(--border);
+}
+.panel-head h3{
+  font-size:10px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--mid);
+}
+
+.panel-body{
+  padding:24px 18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.ip-display{
+  font-family:'Fraunces',serif;
+  font-size:32px;
+  font-weight:200;
+  letter-spacing:-.02em;
+}
+
+.meta{
+  font-size:11px;
+  color:var(--mid);
+}
+
+/* Footer */
+footer{
+  padding:20px 0 28px;
+  border-top:1px solid var(--border);
+  font-size:10px;
+  color:var(--border);
+}
+</style>
+</head>
 <body>
-<button onclick="connect()">Connect to Pi</button>
-<p id="output"></p>
+<div class="shell">
+
+<header>
+  <div class="wordmark">
+    <span>Raspberry Pi</span>
+    Bluetooth IP
+  </div>
+  <div class="status-pill" id="statusPill">
+    <div class="dot"></div>
+    <span id="statusText">Disconnected</span>
+  </div>
+</header>
+
+<main>
+
+<div class="connect-block">
+  <h2>Connect to your Pi</h2>
+  <p>
+    Ensure the Bluetooth IP server is running on your Raspberry Pi.<br>
+    Connect via Web Bluetooth to read its current local IP address.
+  </p>
+  <button class="btn" id="connectBtn" onclick="connectBluetooth()">
+    Connect via Bluetooth
+  </button>
+</div>
+
+<div class="panel" id="ipPanel">
+  <div class="panel-head">
+    <h3>Current IP Address</h3>
+  </div>
+  <div class="panel-body">
+    <div class="ip-display" id="ipValue">—</div>
+    <div class="meta" id="ipTimestamp"></div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  Web Bluetooth · Raspberry Pi GATT Service
+</footer>
+
+</div>
 
 <script>
-async function connect() {
-    const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
-    const CHAR_UUID = 'abcdef01-1234-5678-1234-56789abcdef0';
+const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
+const CHAR_UUID    = 'abcdef01-1234-5678-1234-56789abcdef0';
 
-    try {
-        const device = await navigator.bluetooth.requestDevice({
-            filters: [{ name: 'RPI-IP' }],
-            optionalServices: [SERVICE_UUID]
-        });
+function setStatus(state,text){
+  const pill=document.getElementById('statusPill');
+  pill.className='status-pill '+state;
+  document.getElementById('statusText').textContent=text;
+}
 
-        const server = await device.gatt.connect();
-        const service = await server.getPrimaryService(SERVICE_UUID);
-        const characteristic = await service.getCharacteristic(CHAR_UUID);
+async function connectBluetooth(){
+  if(!navigator.bluetooth){
+    alert("Web Bluetooth not supported in this browser.");
+    return;
+  }
 
-        const value = await characteristic.readValue();
-        const decoder = new TextDecoder('utf-8');
-        const ip = decoder.decode(value);
+  const btn=document.getElementById('connectBtn');
+  btn.disabled=true;
+  setStatus('connecting','Connecting…');
 
-        document.getElementById("output").innerText = "Pi IP Address: " + ip;
+  try{
+    const device=await navigator.bluetooth.requestDevice({
+      filters:[{name:'RPI-IP'}],
+      optionalServices:[SERVICE_UUID]
+    });
 
-    } catch (error) {
-        console.error(error);
-    }
+    const server=await device.gatt.connect();
+    const service=await server.getPrimaryService(SERVICE_UUID);
+    const characteristic=await service.getCharacteristic(CHAR_UUID);
+
+    const value=await characteristic.readValue();
+    const ip=new TextDecoder().decode(value);
+
+    document.getElementById('ipValue').textContent=ip;
+    document.getElementById('ipTimestamp').textContent=
+      'Read at '+new Date().toLocaleTimeString();
+
+    document.getElementById('ipPanel').classList.add('visible');
+
+    setStatus('connected','Connected');
+    btn.disabled=false;
+
+  }catch(e){
+    console.error(e);
+    setStatus('','Disconnected');
+    btn.disabled=false;
+  }
 }
 </script>
+
 </body>
 </html>
