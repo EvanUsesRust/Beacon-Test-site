@@ -22,7 +22,6 @@ end
 
 local function setRudder(targetAngle)
     if targetAngle == currentAngle then
-        print("Rudder already at", targetAngle)
         return
     end
 
@@ -30,12 +29,10 @@ local function setRudder(targetAngle)
     local steps = math.abs(diff) / 45
 
     if diff < 0 then
-        redstone.setAnalogOutput(dirSide, 15) -- subtract
+        redstone.setAnalogOutput(dirSide, 15)
     else
-        redstone.setAnalogOutput(dirSide, 0) -- add
+        redstone.setAnalogOutput(dirSide, 0)
     end
-
-    print("Rudder:", currentAngle, "->", targetAngle)
 
     for i = 1, steps do
         pulse()
@@ -52,14 +49,11 @@ local function altitudeControl()
         local x, y, z = gps.locate(2)
 
         if y then
-            print("Y:", y)
-
             if not cruising then
                 redstone.setAnalogOutput(engineSide, 15)
 
                 if y >= targetY then
                     cruising = true
-                    print("Cruising mode")
                 end
             else
                 if y > 135 then
@@ -72,7 +66,6 @@ local function altitudeControl()
             end
         else
             redstone.setAnalogOutput(engineSide, 0)
-            print("GPS lost")
         end
 
         sleep(0.25)
@@ -82,7 +75,6 @@ end
 -- ===== RUDDER LOOP =====
 local function rudderControl()
     while true do
-        print("Command (left / center / right):")
         local input = read()
 
         if input == "left" then
@@ -91,8 +83,6 @@ local function rudderControl()
             setRudder(0)
         elseif input == "right" then
             setRudder(-45)
-        else
-            print("Invalid command")
         end
     end
 end
