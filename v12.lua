@@ -1,16 +1,16 @@
 -- ===== CONFIG =====
 local targetY = 135
 
--- rudder sides
 local pulseSide = "left"
 local dirSide = "right"
-
--- altitude side
 local engineSide = "back"
+
+-- ===== SETUP =====
+rednet.open("top") -- wired modem
 
 -- ===== STATE =====
 local cruising = false
-local currentAngle = 0 -- assume starting centered
+local currentAngle = 0
 
 -- ===== HELPERS =====
 local function pulse()
@@ -21,9 +21,7 @@ local function pulse()
 end
 
 local function setRudder(targetAngle)
-    if targetAngle == currentAngle then
-        return
-    end
+    if targetAngle == currentAngle then return end
 
     local diff = targetAngle - currentAngle
     local steps = math.abs(diff) / 45
@@ -43,8 +41,6 @@ end
 
 -- ===== ALTITUDE LOOP =====
 local function altitudeControl()
-    rednet.open("top")
-
     while true do
         local x, y, z = gps.locate(2)
 
@@ -72,20 +68,36 @@ local function altitudeControl()
     end
 end
 
--- ===== RUDDER LOOP =====
-local function rudderControl()
+-- ===== NETWORK LOOP =====
+local function networkControl()
     while true do
-        local input = read()
+        local id, msg = rednet.receive()
 
-        if input == "left" then
+        if msg == "left" then
             setRudder(45)
-        elseif input == "center" then
+        elseif msg == "center" then
             setRudder(0)
-        elseif input == "right" then
+        elseif msg == "right" then
             setRudder(-45)
         end
     end
 end
 
--- ===== RUN BOTH =====
-parallel.waitForAny(altitudeControl, rudderControl)
+-- ===== STATUS SENDER =====
+local function sendStatus()
+    while true do
+        local x, y, z = gps.locate(1)
+
+        local data = {
+            y = y or 0,
+            cruising = cruising,
+            angle = currentAngle
+        }
+
+        rednet.broadcast(data)
+        sleep(0.5)
+    end
+end
+
+-- ===== RUN =====
+parallel.waitForAny(altitudeControl, networkControl, sendStatus)
