@@ -1,291 +1,237 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Raspberry Pi · Bluetooth BEACON</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIMLAPI Image Generator</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --border: #374151;
+    }
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,400;1,9..144,200&display=swap" rel="stylesheet" />
+    * { box-sizing: border-box; }
 
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 45%);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
 
-:root {
-  --ink:#1a1a18;
-  --paper:#f5f2ec;
-  --warm:#e8e2d6;
-  --accent:#c4501a;
-  --mid:#7a7468;
-  --green:#3a7a3a;
-  --border:#c8c2b8;
-  --radius:2px;
-}
+    .app {
+      width: min(960px, 100%);
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+    }
 
-html,body{
-  height:100%;
-  background:var(--paper);
-  color:var(--ink);
-  font-family:'DM Mono',monospace;
-  font-size:13px;
-  line-height:1.6;
-}
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.6rem;
+    }
 
-.shell{
-  min-height:100vh;
-  display:grid;
-  grid-template-rows:auto 1fr auto;
-  max-width:640px;
-  margin:0 auto;
-  padding:0 20px;
-}
+    .sub {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
 
-/* Header */
-header{
-  padding:36px 0 28px;
-  border-bottom:1px solid var(--border);
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-}
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 14px;
+    }
 
-.wordmark{
-  font-family:'Fraunces',serif;
-  font-size:22px;
-  font-weight:200;
-  font-style:italic;
-}
-.wordmark span{
-  display:block;
-  font-family:'DM Mono',monospace;
-  font-size:9px;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  color:var(--mid);
-  margin-bottom:4px;
-}
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
 
-/* Status pill */
-.status-pill{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  padding:6px 14px;
-  border:1px solid var(--border);
-  border-radius:100px;
-  font-size:11px;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  background:var(--warm);
-  color:var(--mid);
-  transition:.4s ease;
-}
-.status-pill.connected{
-  border-color:var(--green);
-  color:var(--green);
-  background:#f0f7f0;
-}
-.status-pill.connecting{
-  border-color:#b08020;
-  color:#b08020;
-  background:#fdf8f0;
-}
-.dot{
-  width:7px;height:7px;border-radius:50%;
-  background:var(--border);
-}
-.status-pill.connected .dot{background:var(--green);}
-.status-pill.connecting .dot{background:#b08020;animation:blink .8s infinite;}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+    input, select, textarea, button {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0b1220;
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+    }
 
-/* Main */
-main{padding:32px 0;display:flex;flex-direction:column;gap:28px;}
+    textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
 
-.connect-block{
-  background:var(--warm);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:28px;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-}
+    button {
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+    }
 
-.connect-block h2{
-  font-family:'Fraunces',serif;
-  font-size:18px;
-  font-style:italic;
-}
+    button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
 
-.connect-block p{
-  color:var(--mid);
-  font-size:12px;
-}
+    #status {
+      margin-top: 12px;
+      color: var(--muted);
+      min-height: 20px;
+    }
 
-/* Button */
-.btn{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:11px 22px;
-  border:1.5px solid var(--ink);
-  border-radius:var(--radius);
-  background:var(--ink);
-  color:var(--paper);
-  font-size:11px;
-  letter-spacing:.1em;
-  text-transform:uppercase;
-  cursor:pointer;
-  transition:.18s ease;
-  width:fit-content;
-}
-.btn:hover{background:var(--accent);border-color:var(--accent);}
-.btn:disabled{opacity:.35;cursor:not-allowed;}
+    .gallery {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
 
-/* Panel */
-.panel{
-  display:none;
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  overflow:hidden;
-  background:#fff;
-}
-.panel.visible{display:block;}
-
-.panel-head{
-  padding:12px 18px;
-  background:var(--warm);
-  border-bottom:1px solid var(--border);
-}
-.panel-head h3{
-  font-size:10px;
-  letter-spacing:.16em;
-  text-transform:uppercase;
-  color:var(--mid);
-}
-
-.panel-body{
-  padding:24px 18px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-
-.ip-display{
-  font-family:'Fraunces',serif;
-  font-size:32px;
-  font-weight:200;
-  letter-spacing:-.02em;
-}
-
-.meta{
-  font-size:11px;
-  color:var(--mid);
-}
-
-/* Footer */
-footer{
-  padding:20px 0 28px;
-  border-top:1px solid var(--border);
-  font-size:10px;
-  color:var(--border);
-}
-</style>
+    .gallery img {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #020617;
+    }
+  </style>
 </head>
 <body>
-<div class="shell">
+  <main class="app">
+    <h1>AI Image Generator</h1>
+    <p class="sub">Run this in Codespaces, paste your AIMLAPI key, and generate images from prompts.</p>
 
-<header>
-  <div class="wordmark">
-    <span>Raspberry Pi</span>
-    Bluetooth BEACON
-  </div>
-  <div class="status-pill" id="statusPill">
-    <div class="dot"></div>
-    <span id="statusText">Disconnected</span>
-  </div>
-</header>
+    <div class="grid">
+      <div>
+        <label for="apiKey">AIMLAPI Key</label>
+        <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+      </div>
+      <div>
+        <label for="model">Model</label>
+        <input id="model" type="text" value="stabilityai/stable-diffusion-xl-base-1.0" />
+      </div>
+      <div>
+        <label for="size">Image Size</label>
+        <select id="size">
+          <option value="1024x1024">1024x1024</option>
+          <option value="768x768">768x768</option>
+          <option value="512x512">512x512</option>
+        </select>
+      </div>
+      <div>
+        <label for="count">Count</label>
+        <select id="count">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+    </div>
 
-<main>
+    <label for="prompt">Prompt</label>
+    <textarea id="prompt" placeholder="Cinematic futuristic city at sunrise with flying vehicles"></textarea>
 
-<div class="connect-block">
-  <h2>Connect to your Pi</h2>
-  <p>
-    Ensure the Bluetooth BEACON server is running on your Device.<br>
-    Connect via Web Bluetooth to read its current local IP address.
-  </p>
-  <button class="btn" id="connectBtn" onclick="connectBluetooth()">
-    Connect via Bluetooth
-  </button>
-</div>
+    <button id="generateBtn" type="button">Generate Image</button>
+    <p id="status"></p>
 
-<div class="panel" id="ipPanel">
-  <div class="panel-head">
-    <h3>Current IP Address</h3>
-  </div>
-  <div class="panel-body">
-    <div class="ip-display" id="ipValue">—</div>
-    <div class="meta" id="ipTimestamp"></div>
-  </div>
-</div>
+    <section class="gallery" id="gallery" aria-live="polite"></section>
+  </main>
 
-</main>
+  <script>
+    const apiUrl = 'https://api.aimlapi.com/v1/images/generations';
 
-<footer>
-  Web Bluetooth · Beacon Service
-</footer>
+    function setStatus(message) {
+      document.getElementById('status').textContent = message;
+    }
 
-</div>
+    function renderImages(items) {
+      const gallery = document.getElementById('gallery');
+      gallery.innerHTML = '';
 
-<script>
-const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
-const CHAR_UUID    = 'abcdef01-1234-5678-1234-56789abcdef0';
+      items.forEach((item, index) => {
+        const img = document.createElement('img');
+        if (item.url) {
+          img.src = item.url;
+        } else if (item.b64_json) {
+          img.src = `data:image/png;base64,${item.b64_json}`;
+        }
+        img.alt = `Generated image ${index + 1}`;
+        gallery.appendChild(img);
+      });
+    }
 
-function setStatus(state,text){
-  const pill=document.getElementById('statusPill');
-  pill.className='status-pill '+state;
-  document.getElementById('statusText').textContent=text;
-}
+    async function generateImage() {
+      const key = document.getElementById('apiKey').value.trim();
+      const prompt = document.getElementById('prompt').value.trim();
+      const model = document.getElementById('model').value.trim();
+      const size = document.getElementById('size').value;
+      const n = Number(document.getElementById('count').value);
+      const button = document.getElementById('generateBtn');
 
-async function connectBluetooth(){
-  if(!navigator.bluetooth){
-    alert("Web Bluetooth not supported in this browser.");
-    return;
-  }
+      if (!key) {
+        setStatus('Enter your AIMLAPI key first.');
+        return;
+      }
+      if (!prompt) {
+        setStatus('Enter a prompt first.');
+        return;
+      }
 
-  const btn=document.getElementById('connectBtn');
-  btn.disabled=true;
-  setStatus('connecting','Connecting…');
+      button.disabled = true;
+      setStatus('Generating image(s)...');
 
-  try{
-    const device=await navigator.bluetooth.requestDevice({
-      filters:[{name:'BEACON'}],
-      optionalServices:[SERVICE_UUID]
-    });
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + key,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model,
+            prompt,
+            size,
+            n
+          })
+        });
 
-    const server=await device.gatt.connect();
-    const service=await server.getPrimaryService(SERVICE_UUID);
-    const characteristic=await service.getCharacteristic(CHAR_UUID);
+        const payload = await response.json();
 
-    const value=await characteristic.readValue();
-    const ip=new TextDecoder().decode(value);
+        if (!response.ok) {
+          throw new Error(payload?.error?.message || payload?.message || 'Request failed');
+        }
 
-    document.getElementById('ipValue').textContent=ip;
-    document.getElementById('ipTimestamp').textContent=
-      'Read at '+new Date().toLocaleTimeString();
+        if (!Array.isArray(payload.data) || payload.data.length === 0) {
+          throw new Error('No images returned by the API.');
+        }
 
-    document.getElementById('ipPanel').classList.add('visible');
+        renderImages(payload.data);
+        setStatus(`Done. Generated ${payload.data.length} image(s).`);
+      } catch (error) {
+        console.error(error);
+        setStatus(`Error: ${error.message}`);
+      } finally {
+        button.disabled = false;
+      }
+    }
 
-    setStatus('connected','Connected');
-    btn.disabled=false;
-
-  }catch(e){
-    console.error(e);
-    setStatus('','Disconnected');
-    btn.disabled=false;
-  }
-}
-</script>
-
+    document.getElementById('generateBtn').addEventListener('click', generateImage);
+  </script>
 </body>
 </html>
